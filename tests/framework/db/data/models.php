@@ -37,6 +37,8 @@ class User extends CActiveRecord
 			'postsOrderDescFormat1'=>array(self::HAS_MANY,'Post','author_id','scopes'=>'orderDesc'),
 			'postsOrderDescFormat2'=>array(self::HAS_MANY,'Post','author_id','scopes'=>array('orderDesc')),
 			'postCount'=>array(self::STAT,'Post','author_id'),
+			/* For {@link CActiveRecordTest::testManyManyThrough()}: */
+			'authoredCategories'=>array(self::MANY_MANY,'Category',array('post_category', 'post_id'=>'id', 'category_id'=>'id'),'through'=>'posts'),
 			/* For {@link CActiveRecordTest::testHasManyThroughHasManyWithCustomSelect()}: */
 			'mentorshipsCustomSelect'=>array(self::HAS_MANY,'Mentorship','teacher_id','select' => array('teacher_id', 'student_id')),
 			'studentsCustomSelect'=>array(self::HAS_MANY,'User',array('student_id'=>'id'),'through'=>'mentorshipsCustomSelect','select' => array('id', 'username')),
@@ -397,10 +399,12 @@ class Category extends CActiveRecord
 	{
 		return array(
 			'posts'=>array(self::MANY_MANY, 'Post', 'post_category(post_id,category_id)'),
+			'postsCustom'=>array(self::MANY_MANY,'Post',array('post_category', 'category_id'=>'id', 'post_id'=>'id')),
 			'parent'=>array(self::BELONGS_TO,'Category','parent_id'),
 			'children'=>array(self::HAS_MANY,'Category','parent_id'),
 			'nodes'=>array(self::HAS_MANY,'Category','parent_id','with'=>array('parent','children')),
 			'postCount'=>array(self::STAT, 'Post', 'post_category(post_id,category_id)'),
+			'postCountCustom'=>array(self::STAT, 'Post', array('post_category', 'category_id'=>'id', 'post_id'=>'id')),
 		);
 	}
 }
