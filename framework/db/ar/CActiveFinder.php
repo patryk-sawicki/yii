@@ -1160,8 +1160,7 @@ class CJoinElement
 	private function joinManyMany($joinTable,$fks,$parent)
 	{
 		$schema=$this->_builder->getSchema();
-		$joinElement=$this->master!==null && $this->master->relation!==null ? $this->master : $this;
-		$joinAlias=$schema->quoteTableName($joinElement->relation->name.'_'.$joinElement->tableAlias);
+		$joinAlias=$schema->quoteTableName($this->relation->name.'_'.$this->tableAlias);
 		$parentCondition=array();
 		$childCondition=array();
 
