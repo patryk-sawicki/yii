@@ -573,7 +573,7 @@ class CJoinElement
 					array('{class}'=>get_class($parent->model), '{relation}'=>$element->relation->name, '{joinTable}'=>$joinTableName)));
 			$fks=$element->relation->getJunctionForeignKeys();
 
-			$joinElemenet=$element->master!==null && $element->master->relation!==null ? $element->master : $element;
+			$joinElement=$element->master!==null && $element->master->relation!==null ? $element->master : $element;
 			$joinAlias=$schema->quoteTableName($joinElement->relation->name.'_'.$joinElement->tableAlias);
 			$parentCondition=array();
 			$childCondition=array();
@@ -1160,7 +1160,7 @@ class CJoinElement
 	private function joinManyMany($joinTable,$fks,$parent)
 	{
 		$schema=$this->_builder->getSchema();
-		$joinElemenet=$this->master!==null && $this->master->relation!==null ? $this->master : $this;
+		$joinElement=$this->master!==null && $this->master->relation!==null ? $this->master : $this;
 		$joinAlias=$schema->quoteTableName($joinElement->relation->name.'_'.$joinElement->tableAlias);
 		$parentCondition=array();
 		$childCondition=array();
