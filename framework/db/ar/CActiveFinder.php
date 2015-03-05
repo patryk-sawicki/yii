@@ -437,7 +437,7 @@ class CJoinElement
 			$this->_finder->baseLimited=($criteria->offset>=0 || $criteria->limit>=0);
 			$this->buildQuery($query);
 			$this->_finder->baseLimited=false;
-			$this->runQuery($query);
+			$this->runParentQuery($query);
 		}
 		elseif(!$this->_joined && !empty($this->_parent->records)) // not joined before
 		{
@@ -807,6 +807,19 @@ class CJoinElement
 		$command=$query->createCommand($this->_builder);
 		foreach($command->queryAll() as $row)
 			$this->populateRecord($query,$row);
+	}
+
+	/**
+	 * Executes the join query and populates the query results.
+	 * @param CJoinQuery $query the query to be executed.
+	 */
+	public function runParentQuery($query)
+	{
+		$command = $query->createCommand($this->_builder);
+		$command->limit($query->limit, $query->offset);
+		foreach ($command->queryAll() as $row)
+			$this->populateRecord($query,$row);
+		$this->model->totalRecordsCount = $command->totalRecordsCount;
 	}
 
 	/**

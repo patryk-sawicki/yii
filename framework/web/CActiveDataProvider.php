@@ -175,8 +175,11 @@ class CActiveDataProvider extends CDataProvider
 
 		if(($pagination=$this->getPagination())!==false)
 		{
-			$pagination->setItemCount($this->getTotalItemCount());
+			// disable current page validation to avoid the need to set total item count
+			$validateCurrentPage = $pagination->validateCurrentPage;
+			$pagination->validateCurrentPage = false;
 			$pagination->applyLimit($criteria);
+			$pagination->validateCurrentPage = $validateCurrentPage;
 		}
 
 		$baseCriteria=$this->model->getDbCriteria(false);
@@ -195,9 +198,12 @@ class CActiveDataProvider extends CDataProvider
 			$sort->applyOrder($criteria);
 		}
 
+		$useCursors = $this->model->getDbConnection()->useCursors;
+		$this->model->getDbConnection()->useCursors = true;
 		$this->model->setDbCriteria($baseCriteria!==null ? clone $baseCriteria : null);
 		$data=$this->model->findAll($criteria);
 		$this->model->setDbCriteria($baseCriteria);  // restore original criteria
+		$this->model->getDbConnection()->useCursors = $useCursors;
 		return $data;
 	}
 
@@ -222,11 +228,8 @@ class CActiveDataProvider extends CDataProvider
 	 */
 	protected function calculateTotalItemCount()
 	{
-		$baseCriteria=$this->model->getDbCriteria(false);
-		if($baseCriteria!==null)
-			$baseCriteria=clone $baseCriteria;
-		$count=$this->model->count($this->getCountCriteria());
-		$this->model->setDbCriteria($baseCriteria);
-		return $count;
+		// force a call to $this->model->findAll() which sets totalRecordsCount
+		$this->getData();
+		return $this->model->totalRecordsCount;
 	}
 }

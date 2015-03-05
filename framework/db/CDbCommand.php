@@ -68,6 +68,10 @@ class CDbCommand extends CComponent
 	 * @since 1.1.6
 	 */
 	public $params=array();
+	/**
+	 * @var integer number of total records fetched on last call to query*() methods
+	 */
+	public $totalRecordsCount;
 
 	private $_connection;
 	private $_text;
@@ -208,7 +212,8 @@ class CDbCommand extends CComponent
 		{
 			try
 			{
-				$this->_statement=$this->getConnection()->getPdoInstance()->prepare($this->getText());
+				$driverOptions = $this->getConnection()->useCursors ? array(PDO::ATTR_CURSOR => PDO::CURSOR_SCROLL) : array();
+				$this->_statement=$this->getConnection()->getPdoInstance()->prepare($this->getText(), $driverOptions);
 				$this->_paramLog=array();
 			}
 			catch(Exception $e)
@@ -470,6 +475,7 @@ class CDbCommand extends CComponent
 	private function queryInternal($method,$mode,$params=array())
 	{
 		$params=array_merge($this->params,$params);
+		$this->totalRecordsCount = null;
 
 		if($this->_connection->enableParamLogging && ($pars=array_merge($this->_paramLog,$params))!==array())
 		{
@@ -510,12 +516,15 @@ class CDbCommand extends CComponent
 				$this->_statement->execute($params);
 
 			if($method==='')
-				$result=new CDbDataReader($this);
+				if ($this->getConnection()->useCursors) {
+					throw new CException('NetDbCommand does not support returning CDbDataReader when useCursors is on.');
+				} else {
+					$result=new CDbDataReader($this);
+				}
 			else
 			{
 				$mode=(array)$mode;
-				call_user_func_array(array($this->_statement, 'setFetchMode'), $mode);
-				$result=$this->_statement->$method();
+				$result=$this->fetchResults($method, $mode);
 				$this->_statement->closeCursor();
 			}
 
@@ -543,6 +552,51 @@ class CDbCommand extends CComponent
 			throw new CDbException(Yii::t('yii','CDbCommand failed to execute the SQL statement: {error}',
 				array('{error}'=>$message)),(int)$e->getCode(),$errorInfo);
 		}
+	}
+
+	/**
+	 * @param string $method method of PDOStatement to be called
+	 * @param mixed $mode parameters to be passed to the method
+	 * @return mixed the method execution result
+	 */
+	private function fetchResults($method,$mode)
+	{
+		if (!$this->getConnection()->useCursors) {
+			call_user_func_array(array($this->_statement, 'setFetchMode'), $mode);
+			return $this->_statement->$method();
+		}
+
+		$this->totalRecordsCount = $this->_statement->rowCount();
+		if (count($mode) > 1) {
+			throw new CException('NetDbCommand does not support using advanced fetch modes when useCursors is on.');
+		}
+		$mode = reset($mode);
+		$offset = max($this->getOffset(), 0);
+		$limit = $this->getLimit();
+		$result = array();
+		switch($method) {
+		case 'fetchColumn':
+			$mode = PDO::FETCH_COLUMN;
+		case 'fetchAll':
+			if ($limit > 0) {
+				for ($i = 1; $i <= $limit; $i++) {
+					$result[] = $this->_statement->fetch($mode, PDO::FETCH_ORI_ABS, $offset + $i);
+				}
+			} elseif ($limit < 0) {
+				$i = 1;
+				while (($row = $this->_statement->fetch($mode, PDO::FETCH_ORI_ABS, $offset + $i))) {
+					$result[] = $row;
+					$i++;
+				}
+			}
+			break;
+		case 'fetch':
+			if ($limit !== 0) {
+				$result = $this->_statement->fetch($mode, PDO::FETCH_ORI_ABS, $offset);
+			}
+			break;
+		}
+		return $result;
 	}
 
 	/**

@@ -61,6 +61,7 @@ abstract class CActiveRecord extends CModel
 	private $_c;								// query criteria (used by finder only)
 	private $_pk;								// old primary key value
 	private $_alias='t';						// the table alias being used for query
+	private $_totalRecordsCount;
 
 
 	/**
@@ -1353,7 +1354,9 @@ abstract class CActiveRecord extends CModel
 			if(!$all)
 				$criteria->limit=1;
 			$command=$this->getCommandBuilder()->createFindCommand($this->getTableSchema(),$criteria);
-			return $all ? $this->populateRecords($command->queryAll(), true, $criteria->index) : $this->populateRecord($command->queryRow());
+			$result=$all ? $this->populateRecords($command->queryAll(), true, $criteria->index) : $this->populateRecord($command->queryRow());
+			$this->_totalRecordsCount = $command->totalRecordsCount;
+			return $result;
 		}
 		else
 		{
@@ -1926,6 +1929,17 @@ abstract class CActiveRecord extends CModel
 	public function offsetExists($offset)
 	{
 		return $this->__isset($offset);
+	}
+
+	public function setTotalRecordsCount($value)
+	{
+		$this->_totalRecordsCount = $value;
+		return $this;
+	}
+
+	public function getTotalRecordsCount()
+	{
+		return $this->_totalRecordsCount;
 	}
 }
 

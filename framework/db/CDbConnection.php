@@ -265,6 +265,10 @@ class CDbConnection extends CApplicationComponent
 	 * @since 1.1.8
 	 */
 	public $pdoClass = 'PDO';
+	/**
+	 * @var boolean should commands use cursors instead of OFFSET/LIMIT in queryAll()
+	 */
+	public $useCursors;
 
 	private $_driverName;
 	private $_attributes=array();
