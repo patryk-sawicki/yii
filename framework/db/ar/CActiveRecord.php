@@ -487,7 +487,7 @@ abstract class CActiveRecord extends CModel
 	 * in format of array('key1','key2'). In case you need to specify custom PK->FK association you can define it as
 	 * array('fk'=>'pk'). For composite keys it will be array('fk_c1'=>'pk_с1','fk_c2'=>'pk_c2').
 	 * For foreign keys used in MANY_MANY relation, the joining table must be declared as well
-	 * (e.g. 'join_table(fk1, fk2)').
+	 * (e.g. 'join_table(fk1, fk2)' or array('join_table', 'fk1'=>'pk1', 'fk2'=>'pk2').
 	 *
 	 * Additional options may be specified as name-value pairs in the rest array elements:
 	 * <ul>
@@ -2339,14 +2339,35 @@ class CManyManyRelation extends CHasManyRelation
 	 */
 	private function initJunctionData()
 	{
-		if(!preg_match('/^\s*(.*?)\((.*)\)\s*$/',$this->foreignKey,$matches))
-			throw new CDbException(Yii::t('yii','The relation "{relation}" in active record class "{class}" is specified with an invalid foreign key. The format of the foreign key must be "joinTable(fk1,fk2,...)".',
-				array('{class}'=>$this->className,'{relation}'=>$this->name)));
-		$this->_junctionTableName=$matches[1];
-		$this->_junctionForeignKeys=preg_split('/\s*,\s*/',$matches[2],-1,PREG_SPLIT_NO_EMPTY);
+		$invalidFkMessage = Yii::t(
+			'yii',
+			'The relation "{relation}" in active record class "{class}" is specified with an invalid foreign key. The format of the foreign key must be "joinTable(fk1,fk2,...)".',
+			['{class}' => $this->className, '{relation}' => $this->name]
+		);
+
+		if(!is_array($this->foreignKey)) {
+			if (!preg_match('/^\s*(.*?)\((.*)\)\s*$/', $this->foreignKey, $matches)) {
+				throw new CDbException($invalidFkMessage);
+			}
+
+			$this->_junctionTableName   = $matches[1];
+			$this->_junctionForeignKeys = preg_split('/\s*,\s*/', $matches[2], -1, PREG_SPLIT_NO_EMPTY);
+			return;
+		}
+
+		if (count($this->foreignKey) < 2) {
+			throw new CDbException($invalidFkMessage);
+		}
+		$foreignKey               = $this->foreignKey;
+		$this->_junctionTableName = array_shift($foreignKey);
+		if (count($foreignKey) != 1 || strpos(reset($foreignKey), ',') === false) {
+			$this->_junctionForeignKeys = $foreignKey;
+			return;
+		}
+
+		$this->_junctionForeignKeys = preg_split('/\s*,\s*/', reset($foreignKey), -1, PREG_SPLIT_NO_EMPTY);
 	}
 }
-
 
 /**
  * CActiveRecordMetaData represents the meta-data for an Active Record class.
@@ -2389,7 +2410,7 @@ class CActiveRecordMetaData
 		if(($table=$model->getDbConnection()->getSchema()->getTable($tableName))===null)
 			throw new CDbException(Yii::t('yii','The table "{table}" for active record class "{class}" cannot be found in the database.',
 				array('{class}'=>$this->_modelClassName,'{table}'=>$tableName)));
-				
+
 		if(($modelPk=$model->primaryKey())!==null || $table->primaryKey===null)
 		{
 			$table->primaryKey=$modelPk;
